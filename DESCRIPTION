@@ -15,3 +15,8 @@ Depends:
     R (>= 2.10)
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.2.1
+Imports: 
+    btransfer,
+    dplyr,
+    purrr,
+    tidyr

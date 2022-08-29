@@ -5,9 +5,8 @@
 \alias{demo_data}
 \title{Demographics data}
 \format{
-A tibble with 9 variables:
+A tibble with 8 variables:
 \describe{
-\item{year}{year}
 \item{geo}{nuts code of the administrative region. Values are available at different NUTS levels, up to NUTS3}
 \item{geo_label}{Label of the administrative region considered}
 \item{age}{Age group. Groups considered range from 20-24 years to 60-64 years}
@@ -26,6 +25,6 @@ demo_data
 }
 \description{
 A dataset containing population, death rate and life expectancy data for Italian administrative regions
-and provinces.
+and provinces. Data are the average of the last 5 years, starting from the latest available data.
 }
 \keyword{datasets}

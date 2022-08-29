@@ -6,6 +6,8 @@ library(tidyverse)
 library(readxl)
 library(here)
 library(AMR)
+library(tidystringdist)
+
 
 ref_yr <- 2020 # reference year of the analysis
 
@@ -49,6 +51,14 @@ pop_death_raw <- map2(pop_death_codes, pop_death_names, function(x, y) {
 }
 
 )
+
+# creating a mini-database of Italian total population to compute injury risk
+
+pop_ita <- pop_death_raw[[1]]
+
+pop_ita <- pop_ita[pop_ita$geo == "IT" & pop_ita$age == "TOTAL", c("time", "values")]
+
+names(pop_ita) <- c("year", "pop")
 
 # joining tibbles and calculating mortality rate and share of each age group on total population
 
@@ -96,6 +106,13 @@ demo_data <- pop_death %>%
   select(!geo_sel) %>%
   filter(time <= ref_yr) %>%
   relocate(year = time, geo, geo_label, age, pop, pop_share, deaths, death_rate, life_exp)
+
+# comptuing average demographic data
+
+demo_data <- demo_data %>%
+  group_by(geo, geo_label, age) %>%
+  summarise(across(pop:life_exp, mean, na.rm = TRUE)) %>%
+  ungroup()
 
 ### Physical activty data
 
@@ -248,6 +265,82 @@ speeds_met <- tibble(mode = c("walk", "bike", "ebike"),
                      speed = c(4.6, 15, 20),
                      met = c(4, 6.8, 5))
 
+### creating database for change in injury risk assessment
 
-usethis::use_data(demo_data, phy_act, comm_matrix_cities_km, mun_codes, speeds_met, overwrite = TRUE)
+# Isfort data
 
+data_mobility_isfort <- tibble(year = 2016:2020,
+                        deaths_walk = c(570, 600, 612, 534, 409), # annual number of deaths from road injuries (walking)
+                        deaths_bike = c(275, 254, 219, 253, 169), # annual number of deaths from road injuries (bike)
+                        `modal-share_walk` = c(17.1, 22.3, 23.7, 20.8, 29) / 100, # share of total trips done on foot
+                        `modal-share_bike` = c(3.3, 5.2, 4.3, 3.3, 3.8) / 100,# share of total trips done by bike
+                        `avg-trip-length_walk` = c(rep(3.84, 5)), # average trip length for walking and bikes - from commuting matrix
+                        `avg-trip-length_bike` = c(rep(10.9, 5))) %>%
+  pivot_longer(!year,
+               names_sep = "_", names_to = c("var", "mode"),
+               values_to = "value") %>%
+  pivot_wider(names_from = var, values_from = value)
+
+# Adding variables common to both bike and walking
+mob_share_demand <- tibble(year = 2016:2020,
+                      mobility_share = c(83.6, 88.5, 84.5, 85.3, 69) / 100, # share of total population moving/commuting
+                      mobility_demand = c(2.5, 2.3, 2.5, 2.5, 2.4) #mobility demand (trips per day)      )
+)
+
+fat_risk <- Reduce(merge, list(data_mobility_isfort, mob_share_demand , pop_ita))
+
+# computing fatality risk
+
+fat_risk <- dplyr::group_by(fat_risk, mode)
+
+fat_risk <- dplyr::summarise(fat_risk, dplyr::across(deaths:pop, mean, na.rm = TRUE))
+
+fat_risk <- dplyr::ungroup(fat_risk)
+
+fat_risk <- transform(fat_risk, fat_rate = deaths / (pop * mobility_share * `modal-share` * `avg-trip-length` * 365))
+
+fat_risk <- fat_risk[, c("mode", "fat_rate")] # selecting only variables of interest
+
+# adding a row for e-bikes (assuming the same fatality rate of bikes)
+
+fat_risk <- dplyr::add_row(fat_risk,
+                       mode = "ebike", fat_rate = fat_risk[fat_risk$mode == "bike", ]$fat_rate)
+
+### Uploading urban pollution data
+
+pm_25_urban <- read_excel(here("dati/who-aap-database-may2016.xlsx"), sheet = 2, skip = 2) %>%
+  select(c(1:5), 10:11)
+
+### Pollution data
+
+# Loading mean PM 2.5 concentrations at city/town level from disk
+# data wHO Air quality Database 2022
+# Data refer to 2010 - 2019
+
+pm_25_urban_ita <- read_excel(here("data-raw/air_pollution_database_2022.xlsx"), sheet = "italy_data") %>%
+  select(country = 3, city = 4, year = 5, pm25 = 6) %>%
+  filter(country == "Italy") %>%
+  group_by(city) %>%
+  summarise(bkg_conc = mean(pm25, na.rm = TRUE)) %>%
+  ungroup()
+
+names(pm_25_urban_ita)[1] <- "name"
+
+# joining the municipality, province, and region codes to the dataset. Some manual renaming was needed in the
+# original excel file. Localities without a corresponding code are scrapped.
+
+pm_25_urban_ita <- left_join(pm_25_urban_ita, mun_codes) %>%
+  filter(!is.na(code))
+
+### Creating a tibble with ventilation data for pollution impact assessment
+
+# Creating a tibble with all the parameters
+ventilation_data <- tibble(
+  activity = c("rest", "bike", "car", "ebike", "sleep", "walk", "phy", "mbike"),
+  vent_rates = c(0.54, 3.156, 0.66, 2.256, 0.3, 1.37, 4.8, 0.66),
+  con_fct = c(1, 2, 2.5, 2, 1, 1.6, 1, 2)
+)
+
+usethis::use_data(demo_data, phy_act, comm_matrix_cities_km, mun_codes, speeds_met,
+                  data_mobility_isfort, mob_share_demand, pop_ita, fat_risk, pm_25_urban_ita,
+                  ventilation_data, overwrite = TRUE)

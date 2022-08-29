@@ -8,9 +8,12 @@ scenario_builder(
   city,
   mode_from,
   mode_to,
-  mode_change_share,
+  mode_change_distance,
+  mode_change_age = rep(0, 9),
   comm_days,
-  max_km
+  max_km,
+  ref_yr = 2020,
+  scenario_length = 10
 )
 }
 \arguments{
@@ -24,20 +27,32 @@ commuting mode change. For the full list of modes available see private_car_driv
 \item{mode_to}{A \code{character} string : the active transportation mode to which individuals shift. The
 user cn choose from: \code{walk}, \code{bike} and \code{ebike}. No multiple names allowed.}
 
-\item{mode_change_share}{A numeric value: the share of total commuters shifting from passive to active mobility. Value
-must be between \code{0} and \code{1}. Alternatively to a single value, also a vector of values can be provided,
-to specify a different value for each age group in \code{demo_data}. Age groups range from
-\code{20-24} to \code{60-64} years. Therefore the first value of the vector is the share of the \code{20-24} years  of age
-group, while the last refers to the \code{60-64} group. Each value must be between \code{0} and \code{1}. Vector length
-must be the same of that of the age groups considered.}
+\item{mode_change_distance}{A numeric vector: the shares of total commuters shifting from passive to active mobility. Single values
+must be between \code{0} and \code{1}. The vector must have \code{length = 4}. The first value refers to trips shorter than
+3 km (one way). The second to trips between 3 and 10 km, the third to trips between  10 and 15 km and the
+fourth to trips longer than 15 km. No default value is provided. Alternatively a single value - common to all
+distances - can be provided.}
+
+\item{mode_change_age}{A numeric vector. Since people of different ages might be more or less prone to changing
+their commuting habits, the user can also decide to scale down or up the shares defined with \code{mode_change_distance}
+providing a vector of length \code{9} of values, one for each age group (from \code{20-24} to \code{60-64} years). Values can
+range between \code{0} and \code{1 - mode_change_distance} for any distance range. For example, if \code{mode_change_distance = 0.2} for trips between 3 and 10 km, the user
+can modify such percentage for some age groups. If the first element of \code{mode_change_age} is set to \code{0.1}, it
+means that the share of people aged \code{20-24} years that change their commuting habits is \code{0.2 + 0.1 = 0.3}, that
+is the "baseline" share set with \code{mode_change_distance} is increased by 10\%. Default is set to \code{0} for all
+age groups.}
 
 \item{comm_days}{A numeric value. Indicates the number of commuting days per week. Values must be between \code{1}
 and \code{5}.}
 
-\item{max_km}{A numeri value. The distance threshold (km) below which a given share of commuters (defined with
+\item{max_km}{A numeric value. The distance threshold (km) below which a given share of commuters (defined with
 \code{mode_change_share}) shift from passive to active mobility. This distance is a one-way distance.
 For example, when \code{max_km = 5}, a given share of all commuting travels below (or equal) to 5 km one-way
 are performed with active modes of travel instead than passive.}
+
+\item{ref_yr}{A numeric value. The reference year of the analysis.}
+
+\item{scenario_length}{A numeri value. The length of the scenario in years.}
 
 \item{age_specific}{A logical value: use \code{FALSE} to assume that the share of total commuters.
 who shift to active mobility is the same across age groups. Use \code{TRUE} to provide age-specific values
@@ -55,8 +70,8 @@ scenario_builder("Palermo", "private_car_driver", "bike", 0.2, 4, 5)
 
 ## creating a vector of mode change shares
 
-shares <- c(0.4, 0.3, 0.3, 0.3, 0.2, 0.2, 0.2, 0.1, 0.1)
+mode_change_shares <- c(0.2, 0.15, 0.1, 0.05)
 
-scenario_builder("Palermo", "private_car_driver", "bike", shares, 4, 5)
+scenario_builder("Palermo", "private_car_driver", "bike", mode_change_distance = mode_change_shares, comm_days = 4, max_km = 10)
 
 }
