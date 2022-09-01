@@ -1,10 +1,13 @@
-pollution_impact <- function (scenario) {
+pollution_impact <- function (scenario, rr_25 = 1.08, voly = 70000, vsl = 3600000, voly_vls_ref_yr = 2016,
+                              detail = FALSE) {
 
 # identifying background concentrations of the city considered
 
   # Identifying city name from scenario data
 
   city_name <- scenario$city[1]
+
+  nuts3 <- mun_codes[mun_codes$name == city_name, ]$nuts3
 
   if (city_name %in% pm_25_urban_ita$name) {
 
@@ -17,7 +20,7 @@ pollution_impact <- function (scenario) {
     # otherwise, the average background concentration of all cities in the province to which
     # the municipality considered belongs is used.
 
-    nuts3 <- mun_codes[mun_codes$name == city_name, ]$nuts3
+
 
     bkg_conc <- mean(pm_25_urban_ita[pm_25_urban_ita$nuts3 == nuts3, ]$bkg_conc,
                      na.rm = TRUE)
@@ -38,13 +41,174 @@ pollution_impact <- function (scenario) {
 
   }
 
-  # deriving normal commuting days for both passive (ex ante) and active (ex post) commuting modes
+  # Adding physical activity data (to derive "normal commuting days")
 
-  for (i in speeds) {
+  data <- merge(scenario, phy_act) # adding physical activity data to the scenario generated with scenario_builder
 
-    day_type
+  data <- data[order(data$age, data$year, data$daily_km), ]
+
+  data$individuals <- data$individuals * data$phy_act_share
+
+  # building a list with "normal" commuting days before and after the modal shift (paddove vs active mode)
+
+  data_norm_comm <- NULL
+
+  for (i in c(passive_mode, active_mode)) {
+
+    mode <- ifelse(i == passive_mode, "mode_from", "mode_to")
+
+      dplyr::case_when(
+      i == passive_mode & stringr::str_detect(passive_mode, "car") ~ "car",
+      i == passive_mode & stringr::str_detect(passive_mode, "motorbike") ~ "mbike",
+      i == active_mode ~ "mode_to"
+    )
+
+
+
+
+    speed <- speeds[[i]]
+
+    data_norm_comm[[i]] <- data[, c("city", "year", "age",
+                                    "individuals", "daily_km", mode, "duration")]
+
+    data_norm_comm[[i]] <- transform(data_norm_comm[[i]],
+                                     speed = speed,
+                                     sleep = 8,
+                                     phy = dplyr::case_when( # defining daily hours of physical activity
+                                       data_norm_comm[[i]]$duration == "MN0" ~ 0,
+                                       data_norm_comm[[i]]$duration == "MN1-149" ~ 150 / 2 / 60 / 7,
+                                       data_norm_comm[[i]]$duration == "MN150-299" ~ (300 + 150) / 2 / 60 / 7,
+                                       TRUE ~ 300 / 60 / 7
+                                     ),
+                                     comm = daily_km / speed # defining commuting time
+                                     )
+
+    data_norm_comm[[i]] <- transform(data_norm_comm[[i]],
+                                     rest = 24 - sleep - phy - comm,
+                                     bkg_conc = bkg_conc) # adding background concentrations
+
+    names(data_norm_comm[[i]])[names(data_norm_comm[[i]]) == 'comm'] <- dplyr::case_when(
+      i == passive_mode & stringr::str_detect(passive_mode, "car") ~ "car",
+      i == passive_mode & stringr::str_detect(passive_mode, "motorbike") ~ "mbike",
+      i == active_mode ~ active_mode,
+      TRUE ~ NA_character_
+    )
+
+    # computing inhaled doses
+
+    data_norm_comm[[i]] <- tidyr::pivot_longer(data_norm_comm[[i]],
+                                               sleep:rest,
+                                               names_to = "activity",
+                                               values_to = "hours")
+
+    data_norm_comm[[i]] <- merge(data_norm_comm[[i]], ventilation_data)
+    #
+    data_norm_comm[[i]] <- transform(data_norm_comm[[i]],
+                                     inhaled_doses = vent_rates * bkg_conc * hours * con_fct)
+
+    data_norm_comm[[i]] <- dplyr::group_by(data_norm_comm[[i]], city, year, age, individuals,
+                                           daily_km, duration)
+
+    data_norm_comm[[i]] <- dplyr::summarise(data_norm_comm[[i]],
+                                            inhaled_doses = sum(inhaled_doses))
+
+    data_norm_comm[[i]] <- dplyr::ungroup(data_norm_comm[[i]])
+
+
+    names(data_norm_comm[[i]])[names(data_norm_comm[[i]]) == 'inhaled_doses'] <- paste0('inhaled_doses_', mode)
 
   }
 
 
+ # calculating equivalent change and relative risk
+
+  data <- Reduce(merge, data_norm_comm) # merging data frames (inhaled doses before and after the change)
+
+  data$eq_change <- ((data$inhaled_doses_mode_to / data$inhaled_doses_mode_from) - 1) * bkg_conc
+
+  data$rr <- exp(log(rr_25) * data$eq_change / 10)
+
+  # creating data frame with uptake data (full effect of mode change after 5 years)
+  uptake_by_year <- data.frame(year = c(min(scenario$year):max(scenario$year)),
+                           uptake_rr = c(seq(0.2, 1, 0.2), rep(1, 5)))
+
+  # adding data on mortality and uptake
+
+  data <- Reduce(merge, list(data, demo_data[demo_data$geo == nuts3, c("age", "death_rate", "life_exp")], uptake_by_year))
+
+  data$rr <- 1 + (data$rr - 1) * data$uptake_rr # adjusting RR according to the uptake time
+
+  data$mort_increase <- (data$rr - 1) / data$rr
+
+  # calculating deaths before and after the modal shift
+
+  data_l <- split(data, ~ age + duration + daily_km)
+
+  data_l <- lapply(data_l, function(x) within(x, alive_baseline <- pop_evolution(individuals[1], death_rate)))
+
+  data_l <- lapply(data_l, function(x) within(x, baseline_deaths <- ifelse(year == min(scenario$year),
+                                                                          individuals[1] - alive_baseline,
+                                                                          dplyr::lag(alive_baseline) - alive_baseline)))
+  data <- Reduce(rbind, data_l)
+
+  data$active_deaths <- data$baseline_deaths * data$mort_increase
+
+  # Evaluating additional deaths in economic terms
+
+  data$km_year <- data$alive_baseline * scenario$weekly_comm_days[1] * data$daily_km * 52
+
+  # performing benefit transfer for the voly and the vsl
+
+  bt_fct <- btransfer::bt_transfer(policy_site = "Italy", study_yr = voly_vls_ref_yr,
+                                   policy_yr = min(scenario$year))
+
+  adj_voly_vsl <- c(voly, vsl) * bt_fct$bt_fct
+
+  names(adj_voly_vsl) <- c("voly", "vsl")
+
+  # computing the social discount rate
+
+  sdr <- btransfer::compute_sdr("Italy", policy_yr = min(scenario$year),
+                                h = 20)$sdr
+
+  # defining the output data.frame with the monetary evaluation
+
+  data$disc_fct <- (1 + sdr)^(data$year - min(scenario$year))
+
+  # defining the economic value of health benefits and preparing final output
+
+  data <- transform(data, additional_voly = (active_deaths * life_exp * adj_voly_vsl["voly"]) / disc_fct,
+                    additional_vsl = (active_deaths * adj_voly_vsl["vsl"]) / disc_fct)
+
+  # retaining variables of interest only
+
+  data <- data[, c("year","age", "city", "daily_km", "km_year", "duration",
+                   "active_deaths", "additional_voly", "additional_vsl")]
+
+  data$mode_from <- passive_mode
+
+  data$mode_to <- active_mode
+
+  if (isTRUE(detail)) {
+
+    tidyr::as_tibble(data)
+
+  } else {
+
+    data <- tidyr::tibble(city = data$city[1], mode_from = data$mode_from[1], mode_to = data$mode_to[1],
+                          km_total = sum(data$km_year), active_deaths = sum(data$active_deaths),
+                          additional_voly = sum(data$additional_voly), additional_vsl = sum(data$additional_vsl))
+
+    for (i in paste0("additional_", c("voly", "vsl"))) {
+
+      data[[paste0(i, "_km")]] <- data[[i]] / data[["km_total"]]
+
+    }
+
+    data
+
+  }
+
 }
+
+

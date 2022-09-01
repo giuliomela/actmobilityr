@@ -133,7 +133,7 @@ phy_act_impact <- function(scenario, met_phy_act = 7, rr_0_bike = 0.1,
 
   data_l <- lapply(data_l, function(x) within(x, alive_baseline <- pop_evolution(individuals[1], adj_death_rate)))
 
-  data_l <- lapply(data_l, function(x) within(x,baseline_deaths <- ifelse(year == start_yr,
+  data_l <- lapply(data_l, function(x) within(x, baseline_deaths <- ifelse(year == start_yr,
                                                                           individuals[1] - alive_baseline,
                                                                           dplyr::lag(alive_baseline) - alive_baseline)))
   data <- do.call("rbind", data_l)
@@ -183,12 +183,12 @@ phy_act_impact <- function(scenario, met_phy_act = 7, rr_0_bike = 0.1,
   } else {
 
     data <- tidyr::tibble(city = data$city[1], mode_from = data$mode_from[1], mode_to = data$mode_to[1],
-                          km_year = sum(data$km_year), avoided_deaths = sum(data$avoided_deaths),
+                          km_total = sum(data$km_year), avoided_deaths = sum(data$avoided_deaths),
                           avoided_voly = sum(data$avoided_voly), avoided_vsl = sum(data$avoided_vsl))
 
     for (i in paste0("avoided_", c("voly", "vsl"))) {
 
-      data[[paste0(i, "_km")]] <- data[[i]] / data[["km_year"]]
+      data[[paste0(i, "_km")]] <- data[[i]] / data[["km_total"]]
 
     }
 

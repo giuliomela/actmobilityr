@@ -19,4 +19,5 @@ Imports:
     btransfer,
     dplyr,
     purrr,
+    stringr,
     tidyr

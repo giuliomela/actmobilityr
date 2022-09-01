@@ -72,6 +72,6 @@ scenario_builder("Palermo", "private_car_driver", "bike", 0.2, 4, 5)
 
 mode_change_shares <- c(0.2, 0.15, 0.1, 0.05)
 
-scenario_builder("Palermo", "private_car_driver", "bike", mode_change_distance = mode_change_shares, comm_days = 4, max_km = 10)
+scenario_builder("Palermo", "private_car_driver", "bike", mode_change_distance = mode_change_shares, comm_days = 4, max_km = 5)
 
 }
