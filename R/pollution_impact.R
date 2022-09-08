@@ -1,3 +1,23 @@
+#' Quantify the (negative) health impact of increased exposure to air pollutants linked to
+#' active mobility with respect to passive mobility
+#'
+#' The function takes as a main input a mobility-change scenario defined with [scenario_builder()].
+#' Other parameters all have a default value but can be modified by the user.
+#' Only effects on mortality are considered.
+#'
+#' @inheritParams phy_act_impact
+#' @param rr_25 A numeric value. The relative risk (RR) of death associated with a 10 ug/m3 incrase in background
+#'     PM2.5 concentrations. The default value of `1.08` is taken from Chen & Hoek (increase in mortality
+#'     risk due to a 10 ug/m3 increase in PM2.5)
+#' @return a tibble with the outcome of the economic evaluation: additional deaths and their economic value estimated
+#'     with both the VOLY and the VSL. Values per km travelled are provided if `detail` is set to `FALSE`.
+#' @examples
+#' mode_change_shares <- c(0.2, 0.15, 0.1, 0.05)
+#'
+#' scenario_builder("Palermo", "private_car_driver", "bike", mode_change_distance = mode_change_shares, comm_days = 4, max_km = 10)
+#'
+#' phy_act_impact(scenario)
+#' pollution_impact(scenario)
 pollution_impact <- function (scenario, rr_25 = 1.08, voly = 70000, vsl = 3600000, voly_vls_ref_yr = 2016,
                               detail = FALSE) {
 
@@ -56,15 +76,6 @@ pollution_impact <- function (scenario, rr_25 = 1.08, voly = 70000, vsl = 360000
   for (i in c(passive_mode, active_mode)) {
 
     mode <- ifelse(i == passive_mode, "mode_from", "mode_to")
-
-      dplyr::case_when(
-      i == passive_mode & stringr::str_detect(passive_mode, "car") ~ "car",
-      i == passive_mode & stringr::str_detect(passive_mode, "motorbike") ~ "mbike",
-      i == active_mode ~ "mode_to"
-    )
-
-
-
 
     speed <- speeds[[i]]
 

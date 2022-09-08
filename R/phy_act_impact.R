@@ -34,9 +34,11 @@
 #'     estimates for each age group, physical activity level and year. Default is set to `FALSE`, which return
 #'     aggregate values over the whole length of the scenario.
 #' @return a tibble with the outcome of the economic evaluation: avoided deaths and their economic value estimated
-#' with both the VOLY and the VSL. Values per km travelled are provided if `detail` is set to `FALSE`.
+#'     with both the VOLY and the VSL. Values per km travelled are provided if `detail` is set to `FALSE`.
 #' @examples
-#' scenario <- actmobilityr::scenario_builder("Palermo", "private_car_driver", "bike", shares, 4, 5, 2020, 10)
+#' mode_change_shares <- c(0.2, 0.15, 0.1, 0.05)
+#'
+#' scenario_builder("Palermo", "private_car_driver", "bike", mode_change_distance = mode_change_shares, comm_days = 4, max_km = 10)
 #'
 #' phy_act_impact(scenario)
 #' phy_act_impact(scenario, met_phy_act = 6, detail = TRUE)
@@ -125,13 +127,13 @@ phy_act_impact <- function(scenario, met_phy_act = 7, rr_0_bike = 0.1,
                     adj_prevent_fraction = ifelse(capped_weekly_met < exp_level_base, 0,
                                                   prevent_fraction * uptake_rr))
 
-  pippo <- data[order(data$age, data$daily_km, data$year), ]
+  data <- data[order(data$age, data$daily_km, data$year), ]
 
   # calculating avoided deaths
 
   data_l <- split(data, ~ age + duration + daily_km)
 
-  data_l <- lapply(data_l, function(x) within(x, alive_baseline <- pop_evolution(individuals[1], adj_death_rate)))
+  data_l <- lapply(data_l, function(x) within(x, alive_baseline <- pop_evolution(individuals[1], death_rate)))
 
   data_l <- lapply(data_l, function(x) within(x, baseline_deaths <- ifelse(year == start_yr,
                                                                           individuals[1] - alive_baseline,
@@ -144,7 +146,7 @@ phy_act_impact <- function(scenario, met_phy_act = 7, rr_0_bike = 0.1,
 
   # Calculating yearly distances
 
-  data <- transform(data, km_year = weekly_comm_days * daily_km * alive_baseline * 52)
+  data <- transform(data, km_year = weekly_comm_days * daily_km * (alive_baseline + avoided_deaths) * 52)
 
   rownames(data) <- NULL
 

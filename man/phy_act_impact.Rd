@@ -75,7 +75,9 @@ Other parameters all have a default value but can be modified by the user.
 Only effects on mortality are considered.
 }
 \examples{
-scenario <- actmobilityr::scenario_builder("Palermo", "private_car_driver", "bike", shares, 4, 5, 2020, 10)
+mode_change_shares <- c(0.2, 0.15, 0.1, 0.05)
+
+scenario_builder("Palermo", "private_car_driver", "bike", mode_change_distance = mode_change_shares, comm_days = 4, max_km = 10)
 
 phy_act_impact(scenario)
 phy_act_impact(scenario, met_phy_act = 6, detail = TRUE)
