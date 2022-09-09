@@ -1,5 +1,17 @@
+#' Computing variables of interest to assess the health impact associated with increased air pollutant intake
+#'
+#' It is an internal function, used by `active_mob_impact`.
+#'
+#' @keywords internal
+#' @param data A data frame obtained with `scenario_builder`.
+#' @inheritParams active_mob_impact
+#' @return A data frame similar to the input data frame but including variables of interest to compute the health impact
+#'     increased air pollutant intake
 pollution_imp <- function(data, rr_pm25, nuts3, bkg_conc, speeds, mode_from, mode_to) {
 
+  # checking for errors in input data and packages required
+
+  rlang::check_installed(c("dplyr", "tidyr"), reason = "to use `active_mob_impact`")
 
   # building a list with "normal" commuting days before and after the modal shift (passive vs active mode)
 
@@ -24,11 +36,8 @@ pollution_imp <- function(data, rr_pm25, nuts3, bkg_conc, speeds, mode_from, mod
                                      rest = 24 - sleep - phy - comm,
                                      bkg_conc = bkg_conc) # adding background concentrations
 
-    names(data_norm_comm[[i]])[names(data_norm_comm[[i]]) == 'comm'] <- dplyr::case_when(
-      i == mode_from & stringr::str_detect(mode_from, "car") ~ "car",
-      i == mode_from & stringr::str_detect(mode_from, "motorbike") ~ "mbike",
-      i == mode_to ~ mode_to,
-      TRUE ~ NA_character_
+    names(data_norm_comm[[i]])[names(data_norm_comm[[i]]) == 'comm'] <- ifelse(
+      i == mode_from, mode_from, mode_to
     )
 
     # computing inhaled doses
@@ -41,7 +50,7 @@ pollution_imp <- function(data, rr_pm25, nuts3, bkg_conc, speeds, mode_from, mod
     data_norm_comm[[i]] <- merge(data_norm_comm[[i]], ventilation_data)
 
     data_norm_comm[[i]] <- transform(data_norm_comm[[i]],
-                                     inhaled_doses = vent_rates * bkg_conc * hours * con_fct)
+                                     inhaled_doses = vent_rates * bkg_conc * hours * conf_fct)
 
     data_norm_comm[[i]] <- dplyr::group_by(data_norm_comm[[i]], city, year, age, individuals,
                                            daily_km, duration)

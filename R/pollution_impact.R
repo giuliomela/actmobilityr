@@ -98,11 +98,8 @@ pollution_impact <- function (scenario, rr_25 = 1.08, voly = 70000, vsl = 360000
                                      rest = 24 - sleep - phy - comm,
                                      bkg_conc = bkg_conc) # adding background concentrations
 
-    names(data_norm_comm[[i]])[names(data_norm_comm[[i]]) == 'comm'] <- dplyr::case_when(
-      i == passive_mode & stringr::str_detect(passive_mode, "car") ~ "car",
-      i == passive_mode & stringr::str_detect(passive_mode, "motorbike") ~ "mbike",
-      i == active_mode ~ active_mode,
-      TRUE ~ NA_character_
+    names(data_norm_comm[[i]])[names(data_norm_comm[[i]]) == 'comm'] <- ifelse(
+      i == passive_mode, passive_mode, active_mode
     )
 
     # computing inhaled doses
@@ -113,7 +110,7 @@ pollution_impact <- function (scenario, rr_25 = 1.08, voly = 70000, vsl = 360000
                                                values_to = "hours")
 
     data_norm_comm[[i]] <- merge(data_norm_comm[[i]], ventilation_data)
-    #
+
     data_norm_comm[[i]] <- transform(data_norm_comm[[i]],
                                      inhaled_doses = vent_rates * bkg_conc * hours * con_fct)
 

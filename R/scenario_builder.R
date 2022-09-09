@@ -35,6 +35,7 @@
 #' @param ref_yr A numeric value. The reference year of the analysis.
 #' @param scenario_length A numeri value. The length of the scenario in years.
 #' @return A data.frame with the commuting mode change scenario, to be used to estimate health benefits.
+#' @export
 #' @examples
 #' scenario_builder("Palermo", "private_car_driver", "bike", 0.2, 4, 5)
 #'
@@ -48,6 +49,10 @@ scenario_builder <- function(city, mode_from, mode_to, mode_change_distance, mod
                              comm_days, max_km,
                              ref_yr = 2020, scenario_length = 10){
 
+  # checking for errors in input data and packages required
+
+  rlang::check_installed(c("dplyr", "knitr"), reason = "to use `scenario_builder`")
+
   if (length(city) > 1| length(mode_from) > 1 | length(comm_days) > 1 |
       length(mode_to) > 1) stop("Scenarios can be developed only for one city and transportation mode at once.")
 
@@ -55,14 +60,18 @@ scenario_builder <- function(city, mode_from, mode_to, mode_change_distance, mod
                                                                   Name must start with a capital letter and
                                                                   be in Italian.")
 
-  if (!is.element(mode_from, unique(comm_matrix_cities_km$mean_of_transp))) stop("Please provide a valid
-                                                                                 transport mode name.")
+  if (!is.element(mode_from, unique(comm_matrix_cities_km$mean_of_transp))) stop(paste0("Please provide a valid
+                                                                                 transport mode name: ",
+                                                                                        knitr::combine_words(unique(comm_matrix_cities_km$mean_of_transp), and = "or")))
 
   if (!is.element(length(mode_change_distance), c(1, 4))) stop("The mode_change_distance
                                                                                        parameter can ben of lenght 1
                                                                                        or the same length as the
                                                                                        number of age groups
                                                                                        considered.")
+  if (!is.element(mode_to, c("bike", "ebike", "walk"))) stop ("Please provide a valid
+                                                                transport mode name: bike, ebike or walk")
+
 
   if (any(mode_change_distance > 1) | any(mode_change_distance < 0)) stop("The parameter 'mode_change_distance'
                                                                     must be between 0 and 1")

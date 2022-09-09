@@ -22,6 +22,7 @@ ventilation_data
 \description{
 A data frame containing data on ventilation rates and conversion factors, needed to
 estimate the actual air pollutant concentration in different locations starting from
-background concentration data.
+background concentration data. For some activities (especially public transport means,
+ventilation data and conversion factors are the same of cars)
 }
 \keyword{datasets}

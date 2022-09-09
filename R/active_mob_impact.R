@@ -1,3 +1,55 @@
+#' Compute the economic impact associated with a shift from passive to active mobility
+#'
+#' This function quantifies the health impacts (mortality only) associated with a shift from passive
+#' to active mobility and provides their economic valuation using both the VOLY and the VSL.
+#' Overall health impacts are given by the positive impact associated to increased
+#' physical activity and the negative impacts of increased air pollutant intake and road
+#' injury risk.
+#'
+#' @param scenario A `data.frame` describing a mobility-change scenario defined with [scenario_builder()].
+#' @param met_phy_act A numeric value. The physical effort associated with moderate physical activity (expressed in Mets).
+#'     This parameter is used quantify the overall weekly physical activity of new active mobility adopters
+#'     performing sports in their free-time. Default is `7` MET.
+#' @param rr_phy_bike A numeric value. Relative risk reduction associated with cycling. The default value is `0.10` and is taken from
+#'     the HEAT manual.
+#' @param rr_phy_walk A numeric value. Relative risk reduction associated with walking. The default value is `0.11` and is taken from
+#'     the HEAT manual.
+#' @param rr_phy_ebike A numeric value. Relative risk reduction associated with riding an e-bike and is assumed to be the same of that
+#'     of bikes. The default value is `0.10`.
+#' @param exp_level_base A numeric value. The minimum level of weekly physical activity (expressed in METs) above
+#'     which an individual experiences health benefits. The default value is `11.25`.
+#' @param max_met_walk A numeric value. The level of physical activity exerted walking above which no additional
+#'     health benefits can be obtained. The default value, from the HEAT manual, is `31`.
+#' @param max_met_bike A numeric value. The level of physical activity exerted cycling above which no additional
+#'     health benefits can be obtained. The default value, from the HEAT manual, is `51`.
+#' @param max_met_ebike A numeric value. The level of physical activity exerted riding an e-bike above which no additional
+#'     health benefits can be obtained. The default value is `51`, assumed equal to that of bikes.
+#' @param rr_pm25 A numeric value. The relative risk (RR) of death associated with a 10 ug/m3 incrase in background
+#'     PM2.5 concentrations. The default value of `1.08` is taken from Chen & Hoek (increase in mortality
+#'     risk due to a 10 ug/m3 increase in PM2.5).
+#' @param voly A numeric value. The Value of a Life Year to be used in the economic valuation. The
+#'     default value is `70000` euro 2016 et refers to the EU, taken from the 2019 Handbook of the external cost of transport.
+#' @param vsl A numeric value. The value of a statistical life, to be used in the economic valuation. The
+#'     default value is `3.6` million euro (2016) and refers to the EU. Taken from the 2019 Handbook of the external cost of transport.
+#' @param voly_vls_ref_yr A numeric value. The year to which the `voly` and the `vsl` refer. Default is `2016`.
+#' @param air_pollution A logical value. If set to `TRUE` the negative health effects associated with increased
+#'     air pollutant intake are considered. Default value is set to `TRUE`.
+#' @param injuries A logical value. If set to `TRUE` the negative health effects associated with increased
+#'     road injury risk are considered. Default value is set to `TRUE`.
+#' @param detail A logical value. If set to `TRUE` a detailed version of the output is provided, with specific
+#'     estimates for each age group, physical activity level and year. Default is set to `FALSE`, which return
+#'     aggregate values over the whole length of the scenario.
+#' @return a tibble with the outcome of the economic evaluation: avoided deaths and their economic value estimated
+#'     with both the VOLY and the VSL. Values per km travelled are provided if `detail` is set to `FALSE`.
+#' @export
+#' @examples
+#' mode_change_shares <- c(0.2, 0.15, 0.1, 0.05)
+#'
+#' scenario_builder("Palermo", "private_car_driver", "bike", mode_change_distance = mode_change_shares, comm_days = 4, max_km = 10)
+#'
+#' active_mob_impact(scenario)
+#'
+#' active_mob_impact(scenario, met_phy_act = 6, detail = TRUE)
 active_mob_impact <- function (scenario, met_phy_act = 7, rr_phy_bike = 0.899,
                                rr_phy_walk = 0.883, rr_phy_ebike = 0.899,
                                exp_level_base = 11.25, max_met_walk = 31,
@@ -6,6 +58,15 @@ active_mob_impact <- function (scenario, met_phy_act = 7, rr_phy_bike = 0.899,
                                voly = 70000, vsl = 3600000, voly_vls_ref_yr = 2016,
                                air_pollution = TRUE, injuries = TRUE,
                                detail = FALSE) {
+
+  # checking for errors in input data and packages required
+
+  rlang::check_installed(c("dplyr", "btransfer"), reason = "to use `active_mob_impact`")
+
+  if (is.logical(c(air_pollution, injuries, detail)) == FALSE) stop("air_pollution, injuries and detail
+                                                                            options can assume logical values
+                                                                            only")
+
 
   #### GENERAL PARAMETERS
 
@@ -53,7 +114,7 @@ active_mob_impact <- function (scenario, met_phy_act = 7, rr_phy_bike = 0.899,
 
   for (i in c(mode_from, mode_to)) {
 
-    speeds[[i]] <- comm_matrix_cities_km[comm_matrix_cities_km$mean_of_transp == i, ]$speed_kmh[1]
+    speeds[[i]] <- transport_speeds[transport_speeds$mean_of_transp == i, ]$speed_kmh[1]
 
   }
 

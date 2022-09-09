@@ -306,11 +306,6 @@ fat_risk <- fat_risk[, c("mode", "fat_rate")] # selecting only variables of inte
 fat_risk <- dplyr::add_row(fat_risk,
                        mode = "ebike", fat_rate = fat_risk[fat_risk$mode == "bike", ]$fat_rate)
 
-### Uploading urban pollution data
-
-pm_25_urban <- read_excel(here("dati/who-aap-database-may2016.xlsx"), sheet = 2, skip = 2) %>%
-  select(c(1:5), 10:11)
-
 ### Pollution data
 
 # Loading mean PM 2.5 concentrations at city/town level from disk
@@ -335,12 +330,15 @@ pm_25_urban_ita <- left_join(pm_25_urban_ita, mun_codes) %>%
 ### Creating a tibble with ventilation data for pollution impact assessment
 
 # Creating a tibble with all the parameters
-ventilation_data <- tibble(
-  activity = c("rest", "bike", "car", "ebike", "sleep", "walk", "phy", "mbike"),
-  vent_rates = c(0.54, 3.156, 0.66, 2.256, 0.3, 1.37, 4.8, 0.66),
-  con_fct = c(1, 2, 2.5, 2, 1, 1.6, 1, 2)
-)
+ventilation_data <- read_xlsx(here("data-raw/ventilation_rates.xlsx"))
+
+
+# ventilation_data <- tibble(
+#   activity = c("rest", "bike", "car", "ebike", "sleep", "walk", "phy", "mbike"),
+#   vent_rates = c(0.54, 3.156, 0.66, 2.256, 0.3, 1.37, 4.8, 0.66),
+#   con_fct = c(1, 2, 2.5, 2, 1, 1.6, 1, 2)
+# )
 
 usethis::use_data(demo_data, phy_act, comm_matrix_cities_km, mun_codes, speeds_met,
                   data_mobility_isfort, mob_share_demand, pop_ita, fat_risk, pm_25_urban_ita,
-                  ventilation_data, overwrite = TRUE)
+                  ventilation_data, transport_speeds, overwrite = TRUE)
