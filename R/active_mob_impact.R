@@ -45,7 +45,8 @@
 #' @examples
 #' mode_change_shares <- c(0.2, 0.15, 0.1, 0.05)
 #'
-#' scenario_builder("Palermo", "private_car_driver", "bike", mode_change_distance = mode_change_shares, comm_days = 4, max_km = 10)
+#' scenario <- scenario_builder("Palermo", "private_car_driver", "bike",
+#' mode_change_distance = mode_change_shares, comm_days = 4, max_km = 10)
 #'
 #' active_mob_impact(scenario)
 #'
@@ -60,6 +61,9 @@ active_mob_impact <- function (scenario, met_phy_act = 7, rr_phy_bike = 0.899,
                                detail = FALSE) {
 
   # checking for errors in input data and packages required
+
+  geo <- individuals <- death_rate <- year <- alive_baseline <- avoided_deaths <-
+    disc_fct <- city <- km_tot <- avoided_voly <- avoided_vsl <- life_exp <- NULL
 
   rlang::check_installed(c("dplyr", "btransfer"), reason = "to use `active_mob_impact`")
 
@@ -88,13 +92,13 @@ active_mob_impact <- function (scenario, met_phy_act = 7, rr_phy_bike = 0.899,
 
   city_name <- scenario$city[1]
 
-  nuts3 <- mun_codes[mun_codes$name == city_name, ]$nuts3
+  nuts3 <- actmobilityr::mun_codes[actmobilityr::mun_codes$name == city_name, ]$nuts3
 
-  if (city_name %in% pm_25_urban_ita$name) {
+  if (city_name %in% actmobilityr::pm_25_urban_ita$name) {
 
     # if the municipality is in the WHO database, the actual value is used
 
-    bkg_conc <- pm_25_urban_ita[pm_25_urban_ita$name == city_name, ]$bkg_conc
+    bkg_conc <- actmobilityr::pm_25_urban_ita[actmobilityr::pm_25_urban_ita$name == city_name, ]$bkg_conc
 
   } else {
 
@@ -103,7 +107,7 @@ active_mob_impact <- function (scenario, met_phy_act = 7, rr_phy_bike = 0.899,
 
 
 
-    bkg_conc <- mean(pm_25_urban_ita[pm_25_urban_ita$nuts3 == nuts3, ]$bkg_conc,
+    bkg_conc <- mean(actmobilityr::pm_25_urban_ita[actmobilityr::pm_25_urban_ita$nuts3 == nuts3, ]$bkg_conc,
                      na.rm = TRUE)
 
   }
@@ -114,13 +118,13 @@ active_mob_impact <- function (scenario, met_phy_act = 7, rr_phy_bike = 0.899,
 
   for (i in c(mode_from, mode_to)) {
 
-    speeds[[i]] <- transport_speeds[transport_speeds$mean_of_transp == i, ]$speed_kmh[1]
+    speeds[[i]] <- actmobilityr::transport_speeds[actmobilityr::transport_speeds$mean_of_transp == i, ]$speed_kmh[1]
 
   }
 
   #### ADDING PHYSICAL ACTIVITY DATA
 
-  data <- merge(scenario, phy_act) # adding physical activity data to the scenario generated with scenario_builder
+  data <- merge(scenario, actmobilityr::phy_act) # adding physical activity data to the scenario generated with scenario_builder
 
   data <- data[order(data$age, data$year, data$daily_km), ]
 
@@ -140,7 +144,7 @@ active_mob_impact <- function (scenario, met_phy_act = 7, rr_phy_bike = 0.899,
 
   # adding mortality data, depending on the NUTS3 in which the city is located
 
-  demo <- subset(demo_data, geo == nuts3) # demo data referring to the scenario city
+  demo <- subset(actmobilityr::demo_data, geo == nuts3) # demo data referring to the scenario city
 
   data <- merge(data, demo[, c("age", "death_rate", "life_exp")])
 
@@ -206,7 +210,7 @@ active_mob_impact <- function (scenario, met_phy_act = 7, rr_phy_bike = 0.899,
 
   #### TAKING INCREASED INJURY RISK INTO ACCOUNT
 
-  data <- dplyr::left_join(data, fat_risk, by = c("mode_to" = "mode"))
+  data <- dplyr::left_join(data, actmobilityr::fat_risk, by = c("mode_to" = "mode"))
 
   data$additional_deaths_injury <- data$km_tot * data$fat_rate
 

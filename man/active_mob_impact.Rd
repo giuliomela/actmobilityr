@@ -87,7 +87,8 @@ injury risk.
 \examples{
 mode_change_shares <- c(0.2, 0.15, 0.1, 0.05)
 
-scenario_builder("Palermo", "private_car_driver", "bike", mode_change_distance = mode_change_shares, comm_days = 4, max_km = 10)
+scenario <- scenario_builder("Palermo", "private_car_driver", "bike",
+mode_change_distance = mode_change_shares, comm_days = 4, max_km = 10)
 
 active_mob_impact(scenario)
 

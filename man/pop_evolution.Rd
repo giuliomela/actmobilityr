@@ -21,5 +21,6 @@ yearly mortality rate. It is useful to compute avoided and additional deaths
 in mobility change scenarios. The input for year \emph{n} is the output of year \emph{n-1}.
 }
 \examples{
-pop_evolution(500, seq(from = 0.001, to = 0.0006, by = - 0.0001))
+actmobilityr:::pop_evolution(500, seq(from = 0.001, to = 0.0006, by = - 0.0001))
 }
+\keyword{internal}

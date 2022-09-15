@@ -9,6 +9,10 @@
 #'     increased air pollutant intake
 pollution_imp <- function(data, rr_pm25, nuts3, bkg_conc, speeds, mode_from, mode_to) {
 
+  met <- weekly_travel_time <- weekly_phy_act_h <- daily_km <- sleep <- phy <-
+    comm <- rest <- vent_rates <- hours <- conf_fct <- city <- year <- age <-
+    individuals <- inhaled_doses <- duration <- NULL
+
   # checking for errors in input data and packages required
 
   rlang::check_installed(c("dplyr", "tidyr"), reason = "to use `active_mob_impact`")
@@ -47,7 +51,7 @@ pollution_imp <- function(data, rr_pm25, nuts3, bkg_conc, speeds, mode_from, mod
                                                names_to = "activity",
                                                values_to = "hours")
 
-    data_norm_comm[[i]] <- merge(data_norm_comm[[i]], ventilation_data)
+    data_norm_comm[[i]] <- merge(data_norm_comm[[i]], actmobilityr::ventilation_data)
 
     data_norm_comm[[i]] <- transform(data_norm_comm[[i]],
                                      inhaled_doses = vent_rates * bkg_conc * hours * conf_fct)

@@ -10,7 +10,7 @@ scenario_builder(
   mode_to,
   mode_change_distance,
   mode_change_age = rep(0, 9),
-  comm_days,
+  comm_days = 4,
   max_km,
   ref_yr = 2020,
   scenario_length = 10
@@ -43,7 +43,7 @@ is the "baseline" share set with \code{mode_change_distance} is increased by 10\
 age groups.}
 
 \item{comm_days}{A numeric value. Indicates the number of commuting days per week. Values must be between \code{1}
-and \code{5}.}
+and \code{5}. Default is \code{4}.}
 
 \item{max_km}{A numeric value. The distance threshold (km) below which a given share of commuters (defined with
 \code{mode_change_share}) shift from passive to active mobility. This distance is a one-way distance.
@@ -52,11 +52,7 @@ are performed with active modes of travel instead than passive.}
 
 \item{ref_yr}{A numeric value. The reference year of the analysis.}
 
-\item{scenario_length}{A numeri value. The length of the scenario in years.}
-
-\item{age_specific}{A logical value: use \code{FALSE} to assume that the share of total commuters.
-who shift to active mobility is the same across age groups. Use \code{TRUE} to provide age-specific values
-(see \code{mode_change_share}).}
+\item{scenario_length}{A numeric value. The length of the scenario in years.}
 }
 \value{
 A data.frame with the commuting mode change scenario, to be used to estimate health benefits.
@@ -66,12 +62,11 @@ This function creates a tibble with all relevant information for a mobility chan
 scenario for any Italian city and for several transportation means.
 }
 \examples{
-scenario_builder("Palermo", "private_car_driver", "bike", 0.2, 4, 5)
-
 ## creating a vector of mode change shares
 
 mode_change_shares <- c(0.2, 0.15, 0.1, 0.05)
 
-scenario_builder("Palermo", "private_car_driver", "bike", mode_change_distance = mode_change_shares, comm_days = 4, max_km = 5)
+scenario_builder("Palermo", "private_car_driver", "bike",
+mode_change_distance = mode_change_shares, comm_days = 4, max_km = 5)
 
 }

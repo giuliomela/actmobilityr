@@ -2,26 +2,28 @@ testthat::test_that("active_mob_impact works", {
 
   mode_change_shares <- c(0.2, 0.15, 0.1, 0.05)
 
-  cities <- c("Milano", "Roma", "Palermo", "")
+  cities <- c("Milano", "Roma", "Palermo")
 
-  scenario_builder("Palermo", "private_car_driver", "bike",
-                   mode_change_distance = mode_change_shares, comm_days = 4, max_km = 10)
+  modes <- c("bike", "ebike", "walk")
 
-  output <- active_mob_impact(scenario)
+  db <- tidyr::expand_grid(city = cities, mode_to = modes)
 
-  testthat::expect_true(tibble::is_tibble(output))
-
-  out_vars <- c("avoided_deaths", "km_tot", "avoided_voly",
-                "avoided_vsl", "avoided_voly_km", "avoided_vsl_km") # output variables to test
-
-  out_check <- sapply(out_vars, function(x) is.numeric(output[[x]]))
-
-  for(i in out_check) {
-
-    testthat::expect_true(i)
-
-  } # checking that all output values in the output tibble are numeric
+  scenarios <- dplyr::mutate(db,
+                scenarios = purrr::map2(city, mode_to,
+                                      function(x, y) scenario_builder(city = x, mode_to = y,
+                                      mode_from = "private_car_driver", mode_change_distance = mode_change_shares,
+                                           comm_days = 4, max_km = 10))
+  )
 
 
+  scenarios <- dplyr::mutate(scenarios,
+    results = lapply(scenarios, function(x) active_mob_impact(x))
+  )
+
+  data_to_test <- tidyr::unnest(scenarios[, c("scenarios", "results")], results)
+
+  test_vector <- apply(data_to_test[, 5:10], 2, function(x)is.numeric(x))
+
+  purrr::map(test_vector, function(x) expect_true(x)) # all output columns are numeric
 
 })

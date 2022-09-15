@@ -9,4 +9,4 @@
 #' }
 #'
 #' @source{https://ec.europa.eu/eurostat/data/database}
-"demo_data"
+"transport_speeds"

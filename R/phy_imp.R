@@ -22,6 +22,8 @@
 phy_imp <- function (data, met_phy_act, max_met_walk, rr_phy,
                      max_met_bike, max_met_ebike, mode_to, exp_level_base) {
 
+  met <- weekly_travel_time <- NULL
+
   # checking for errors in input data and packages required
 
   rlang::check_installed(c("dplyr"), reason = "to use `active_mob_impact`")

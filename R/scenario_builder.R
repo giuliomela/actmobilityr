@@ -23,30 +23,26 @@
 #'   means that the share of people aged `20-24` years that change their commuting habits is `0.2 + 0.1 = 0.3`, that
 #'   is the "baseline" share set with `mode_change_distance` is increased by 10%. Default is set to `0` for all
 #'   age groups.
-#' @param age_specific A logical value: use `FALSE` to assume that the share of total commuters.
-#'   who shift to active mobility is the same across age groups. Use `TRUE` to provide age-specific values
-#'   (see `mode_change_share`).
 #' @param comm_days A numeric value. Indicates the number of commuting days per week. Values must be between `1`
-#'   and `5`.
+#'   and `5`. Default is `4`.
 #' @param max_km A numeric value. The distance threshold (km) below which a given share of commuters (defined with
 #'   `mode_change_share`) shift from passive to active mobility. This distance is a one-way distance.
 #'   For example, when `max_km = 5`, a given share of all commuting travels below (or equal) to 5 km one-way
 #'   are performed with active modes of travel instead than passive.
 #' @param ref_yr A numeric value. The reference year of the analysis.
-#' @param scenario_length A numeri value. The length of the scenario in years.
+#' @param scenario_length A numeric value. The length of the scenario in years.
 #' @return A data.frame with the commuting mode change scenario, to be used to estimate health benefits.
 #' @export
 #' @examples
-#' scenario_builder("Palermo", "private_car_driver", "bike", 0.2, 4, 5)
-#'
 #' ## creating a vector of mode change shares
 #'
 #' mode_change_shares <- c(0.2, 0.15, 0.1, 0.05)
 #'
-#' scenario_builder("Palermo", "private_car_driver", "bike", mode_change_distance = mode_change_shares, comm_days = 4, max_km = 5)
+#' scenario_builder("Palermo", "private_car_driver", "bike",
+#' mode_change_distance = mode_change_shares, comm_days = 4, max_km = 5)
 #'
 scenario_builder <- function(city, mode_from, mode_to, mode_change_distance, mode_change_age = rep(0, 9),
-                             comm_days, max_km,
+                             comm_days = 4, max_km,
                              ref_yr = 2020, scenario_length = 10){
 
   # checking for errors in input data and packages required
@@ -56,13 +52,13 @@ scenario_builder <- function(city, mode_from, mode_to, mode_change_distance, mod
   if (length(city) > 1| length(mode_from) > 1 | length(comm_days) > 1 |
       length(mode_to) > 1) stop("Scenarios can be developed only for one city and transportation mode at once.")
 
-  if (!is.element(city, comm_matrix_cities_km$municipality)) stop("Please provide a valida municipality name.
+  if (!is.element(city, actmobilityr::comm_matrix_cities_km$municipality)) stop("Please provide a valid municipality name.
                                                                   Name must start with a capital letter and
                                                                   be in Italian.")
 
-  if (!is.element(mode_from, unique(comm_matrix_cities_km$mean_of_transp))) stop(paste0("Please provide a valid
+  if (!is.element(mode_from, unique(actmobilityr::comm_matrix_cities_km$mean_of_transp))) stop(paste0("Please provide a valid
                                                                                  transport mode name: ",
-                                                                                        knitr::combine_words(unique(comm_matrix_cities_km$mean_of_transp), and = "or")))
+                                                                                        knitr::combine_words(unique(actmobilityr::comm_matrix_cities_km$mean_of_transp), and = "or")))
 
   if (!is.element(length(mode_change_distance), c(1, 4))) stop("The mode_change_distance
                                                                                        parameter can ben of lenght 1
@@ -76,19 +72,17 @@ scenario_builder <- function(city, mode_from, mode_to, mode_change_distance, mod
   if (any(mode_change_distance > 1) | any(mode_change_distance < 0)) stop("The parameter 'mode_change_distance'
                                                                     must be between 0 and 1")
 
-  if (any(unlist(lapply(mode_change_age, function (x) mode_change_distance + x)) > 1)) stop ("The sum between
-                                                                                        'mode_change_distance' and
-                                                                                        'mode_change_age' must be
-                                                                                        lower or equal to 1")
 
 
   if(!is.element(comm_days, 1:5)) stop("Commuting days must be betwee 1 and 5.")
+
+  mean_of_transp <- km_one_way <- daily_km <- avg_speed <- municipality <- NULL
 
   scenario_yr <- ref_yr + scenario_length - 1
 
   # subsetting the commodity matrix
 
-  comm_data <- subset(comm_matrix_cities_km,
+  comm_data <- subset(actmobilityr::comm_matrix_cities_km,
                       municipality %in% city &
                         mean_of_transp %in% mode_from &
                         km_one_way <= max_km)
@@ -102,11 +96,11 @@ scenario_builder <- function(city, mode_from, mode_to, mode_change_distance, mod
   # applying the demographic structure of the province to the commuting individuals in the chosen city,
   # average of the last 5 years
 
-  pop_shares <- demo_data[demo_data$geo == nuts3, c("age", "pop_share")]
+  pop_shares <- actmobilityr::demo_data[actmobilityr::demo_data$geo == nuts3, c("age", "pop_share")]
 
   # adding age-specific mode change shares
 
-  mode_change_age <- data.frame(age = sort(unique(demo_data$age)),
+  mode_change_age <- data.frame(age = sort(unique(actmobilityr::demo_data$age)),
                                 mode_change_age = mode_change_age)
 
   pop_shares <- merge(pop_shares, mode_change_age)
@@ -147,9 +141,9 @@ scenario_builder <- function(city, mode_from, mode_to, mode_change_distance, mod
 
   # Computing commuting times
 
-  scenario$avg_speed <- speeds_met[speeds_met$mode == mode_to, ]$speed
+  scenario$avg_speed <- actmobilityr::speeds_met[actmobilityr::speeds_met$mode == mode_to, ]$speed
 
-  scenario$met <- speeds_met[speeds_met$mode == mode_to, ]$met
+  scenario$met <- actmobilityr::speeds_met[actmobilityr::speeds_met$mode == mode_to, ]$met
 
   scenario <- transform(scenario, weekly_travel_time = daily_km / avg_speed * comm_days,
                         city = city)

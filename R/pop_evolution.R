@@ -8,8 +8,9 @@
 #' @param death_rate A numeric vector. A vector of annual mortality rates. A vector
 #'    is used to allow the user to apply different mortality rates for different years.
 #' @return A vector of population values of the same length of `death_rate`.
+#' @keywords internal
 #' @examples
-#' pop_evolution(500, seq(from = 0.001, to = 0.0006, by = - 0.0001))
+#' actmobilityr:::pop_evolution(500, seq(from = 0.001, to = 0.0006, by = - 0.0001))
 pop_evolution <- function(pop, death_rate) {
 
   purrr::accumulate(death_rate[2:length(death_rate)], function (x, y) x * (1 - y),
